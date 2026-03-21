@@ -102,12 +102,12 @@ library {
 }
 
 audio {
-    nickname = "HiFi"
+    nickname = "What_You_Want"
     type = "pulseaudio"
     # Point explicitly to the host PulseAudio socket.
     # PULSE_SERVER env var alone is not enough for OwnTone:
     # the server directive must be set explicitly here too.
-    server = "unix:/run/user/1000/pulse/native"
+    server = "/run/user/1000/pulse/native"
 }
 ```
 
