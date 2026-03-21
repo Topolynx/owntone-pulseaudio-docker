@@ -93,7 +93,7 @@ Key settings to configure in `owntone.conf`:
 general {
     uid = "root"
     logfile = "/proc/1/fd/1"    # sends logs to docker logs
-    loglevel = "log"
+    loglevel = log
 }
 
 library {
@@ -102,7 +102,7 @@ library {
 }
 
 audio {
-    nickname = "What_You_Want"
+    nickname = "WHAT_EVER_NAME_YOU_WANT"
     type = "pulseaudio"
     # Point explicitly to the host PulseAudio socket.
     # PULSE_SERVER env var alone is not enough for OwnTone:
