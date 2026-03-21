@@ -40,7 +40,7 @@ jobs:
 
           # Recupera i tag esistenti su Docker Hub
           EXISTING=$(curl -s \
-            "https://hub.docker.com/v2/repositories/luciobt/owntone-pulseaudio-docker/tags/?page_size=100" \
+            "https://hub.docker.com/v2/repositories/luciobt/owntone-pulseaudio/tags/?page_size=100" \
             | jq -r '.results[].name' 2>/dev/null || echo "")
 
           if echo "$EXISTING" | grep -q "^${LATEST}$"; then
@@ -83,22 +83,11 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            luciobt/owntone-pulseaudio-docker:latest
-            luciobt/owntone-pulseaudio-docker:${{ steps.owntone_version.outputs.version }}
+            luciobt/owntone-pulseaudio:latest
+            luciobt/owntone-pulseaudio:${{ steps.owntone_version.outputs.version }}
           build-args: |
             REPOSITORY_VERSION=${{ steps.owntone_version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 7. Aggiorna la descrizione su Docker Hub
-      - name: Update Docker Hub description
-        if: |
-          steps.check_build.outputs.needed == 'true' ||
-          github.event_name == 'workflow_dispatch' ||
-          github.event_name == 'push'
-        uses: peter-evans/dockerhub-description@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: luciobt/owntone-pulseaudio-docker
-          readme-filepath: ./README.md
+
