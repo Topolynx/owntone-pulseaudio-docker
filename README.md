@@ -1,36 +1,117 @@
 # owntone-pulseaudio-docker
 
-Custom OwnTone Docker image based on Alpine 3.22, built with:
+Custom [OwnTone](https://github.com/owntone/owntone-server) Docker image based on Alpine 3.22.
 
-- ✅ **PulseAudio** support
-- ✅ **LastFM** scrobbling
+Built with:
+- ✅ PulseAudio output
+- ✅ LastFM scrobbling
+- ✅ Web interface
+- ✅ AirPlay / AirPlay 2
+- ✅ MPD protocol
 - ❌ Spotify (disabled)
 - ❌ Chromecast (disabled)
 
 Automatically rebuilt nightly when a new OwnTone release is detected.
+Image available on Docker Hub: [`luciobt/owntone-pulseaudio`](https://hub.docker.com/r/luciobt/owntone-pulseaudio)
 
-## Quick Start
+---
+
+## How PulseAudio works in this setup
+
+This container does **not** run its own PulseAudio daemon for audio output.
+Instead, it connects to the PulseAudio instance already running on the host,
+using the host's Unix socket.
+
+This is achieved by:
+1. Mounting the host PulseAudio socket directory into the container:
+   `/run/user/1000/pulse` → `/run/user/1000/pulse`
+2. Mounting the PulseAudio authentication cookie:
+   `/home/youruser/.config/pulse/cookie` → `/root/.config/pulse/cookie`
+3. Passing the socket path via environment variable:
+   `PULSE_SERVER=unix:/run/user/1000/pulse/native`
+
+OwnTone reads `PULSE_SERVER` and connects directly to the host audio stack,
+gaining access to all sinks (sound cards, Bluetooth devices, virtual outputs)
+visible to the host user.
+
+> **Note:** Replace `1000` with your actual user UID if different
+> (`id -u` to check), and adjust paths accordingly.
+
+---
+
+## docker-compose.yml
 
 ```yaml
 version: "3.8"
+
 services:
   owntone:
-    image: luciobt/owntone-pulseaudio-docker:latest
+    image: luciobt/owntone-pulseaudio:latest
     container_name: owntone
     network_mode: host
     privileged: true
+    security_opt:
+      - seccomp:unconfined
+    tmpfs:
+      - /run
+      - /sys/fs/cgroup
     environment:
-      - TZ=Europe/Rome
-      - UID=1000
-      - GID=1000
+      - TZ=Europe/Rome        # set your timezone
+      - UID=1000              # host user UID (run: id -u)
+      - GID=1000              # host user GID (run: id -g)
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - PULSE_COOKIE=/root/.config/pulse/cookie
     volumes:
+      # OwnTone configuration directory
       - /path/to/config:/etc/owntone
+      # Music library
       - /path/to/music:/srv/media
-      - /path/to/playlists:/playlists
-      - /path/to/cache:/var/cache/owntone
+      # Additional library directories (optional)
+      - /path/to/compilations:/Compilations
+      # Radio playlists (optional)
+      - /path/to/playlists:/playlists:rw
+      # OwnTone database and cache
+      - /path/to/cache:/var/cache/owntone:rw
+      # PulseAudio socket from host
       - /run/user/1000/pulse:/run/user/1000/pulse
+      # PulseAudio authentication cookie
+      - /home/youruser/.config/pulse/cookie:/root/.config/pulse/cookie
     restart: always
 ```
+
+---
+
+## Configuration
+
+On first run, if no `owntone.conf` is found in the config directory,
+OwnTone will generate a default one. Edit it to set your library paths,
+audio output, LastFM credentials, and other options.
+
+Key settings to configure in `owntone.conf`:
+
+```
+general {
+    uid = "root"
+    logfile = "/proc/1/fd/1"    # sends logs to docker logs
+    loglevel = "log"
+}
+
+library {
+    directories = { "/srv/media" }
+    # add more directories as needed
+}
+
+audio {
+    nickname = "HiFi"
+    type = "pulseaudio"
+    # Point explicitly to the host PulseAudio socket.
+    # PULSE_SERVER env var alone is not enough for OwnTone:
+    # the server directive must be set explicitly here too.
+    server = "unix:/run/user/1000/pulse/native"
+}
+```
+
+---
 
 ## Source
 
