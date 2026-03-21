@@ -1,0 +1,104 @@
+name: Build and Push OwnTone Custom Image
+
+on:
+  # Trigger manuale dalla UI di GitHub
+  workflow_dispatch:
+
+  # Trigger su ogni push al repository
+  push:
+    branches:
+      - main
+
+  # Controllo notturno alle 3:00 UTC per nuove versioni di OwnTone
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout del nostro repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Controlla l'ultima versione di OwnTone su GitHub
+      - name: Get latest OwnTone version
+        id: owntone_version
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/owntone/owntone-server/releases/latest \
+            | jq -r '.tag_name')
+          echo "Latest OwnTone version: $LATEST"
+          echo "version=$LATEST" >> $GITHUB_OUTPUT
+
+      # 3. Controlla se abbiamo già buildato questa versione
+      #    leggendo il tag dell'ultima immagine su Docker Hub
+      - name: Check if build is needed
+        id: check_build
+        run: |
+          LATEST="${{ steps.owntone_version.outputs.version }}"
+
+          # Recupera i tag esistenti su Docker Hub
+          EXISTING=$(curl -s \
+            "https://hub.docker.com/v2/repositories/luciobt/owntone-pulseaudio-docker/tags/?page_size=100" \
+            | jq -r '.results[].name' 2>/dev/null || echo "")
+
+          if echo "$EXISTING" | grep -q "^${LATEST}$"; then
+            echo "Version $LATEST already built, skipping."
+            echo "needed=false" >> $GITHUB_OUTPUT
+          else
+            echo "New version $LATEST detected, build needed."
+            echo "needed=true" >> $GITHUB_OUTPUT
+          fi
+
+      # 4. Login su Docker Hub (solo se la build è necessaria o trigger manuale/push)
+      - name: Login to Docker Hub
+        if: |
+          steps.check_build.outputs.needed == 'true' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 5. Setup Docker Buildx
+      - name: Set up Docker Buildx
+        if: |
+          steps.check_build.outputs.needed == 'true' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event_name == 'push'
+        uses: docker/setup-buildx-action@v3
+
+      # 6. Build e push su Docker Hub
+      #    Tag: sia 'latest' che il numero di versione specifico di OwnTone
+      - name: Build and push
+        if: |
+          steps.check_build.outputs.needed == 'true' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event_name == 'push'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            luciobt/owntone-pulseaudio-docker:latest
+            luciobt/owntone-pulseaudio-docker:${{ steps.owntone_version.outputs.version }}
+          build-args: |
+            REPOSITORY_VERSION=${{ steps.owntone_version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 7. Aggiorna la descrizione su Docker Hub
+      - name: Update Docker Hub description
+        if: |
+          steps.check_build.outputs.needed == 'true' ||
+          github.event_name == 'workflow_dispatch' ||
+          github.event_name == 'push'
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: luciobt/owntone-pulseaudio-docker
+          readme-filepath: ./README.md
