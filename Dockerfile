@@ -41,6 +41,7 @@ RUN \
     libxml2-dev \
     make \
     npm \
+    pipewire-dev \
     protobuf-c-dev \
     pulseaudio-dev \
     sqlite-dev && \
@@ -60,6 +61,7 @@ RUN \
     --mandir=/usr/share/man \
     --prefix=/usr \
     --sysconfdir=/etc/owntone \
+    --with-pipewire \
     --with-pulseaudio && \
   make DESTDIR=/tmp/build install && \
   cd /tmp/build && \
@@ -93,6 +95,7 @@ RUN \
     libwebsockets \
     libxml2 \
     openrc \
+    pipewire-libs \
     protobuf-c \
     pulseaudio \
     pulseaudio-openrc \
