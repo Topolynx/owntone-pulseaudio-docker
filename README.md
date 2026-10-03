@@ -117,3 +117,28 @@ audio {
 
 Based on [OwnTone](https://github.com/owntone/owntone-server) —
 an open source audio media server for GNU/Linux, FreeBSD and macOS.
+
+## Experimental native PipeWire image (dev)
+
+The experimental image tag is `luciobt/owntone-pulseaudio:dev`.
+The separate dev workflow builds from [Topolynx/owntone-server](https://github.com/Topolynx/owntone-server),
+branch `pipewire-native`, pinned to commit
+`e3355d91d8da8c05cc04a59b44efc6792dd28582`. It runs manually or on pushes
+to `native-pipewire-test` and publishes only `:dev`. PulseAudio support remains
+available for comparison.
+
+Expected minimal OwnTone configuration for native PipeWire:
+
+```conf
+audio {
+    nickname = "Pigreco"
+    type = "pipewire"
+    mixer = "pwstream"
+}
+```
+
+For native PipeWire, do not use `server = "/run/user/1000/pulse/native"`.
+The container will need access to the host user's PipeWire runtime, normally
+through `/run/user/1000/pipewire-0`; adjust the UID to match the host user.
+The final runtime setup will be validated later on Pigreco. No definitive
+PipeWire Docker Compose configuration is provided until that runtime test.
