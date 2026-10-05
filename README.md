@@ -138,7 +138,18 @@ audio {
 ```
 
 For native PipeWire, do not use `server = "/run/user/1000/pulse/native"`.
-The container will need access to the host user's PipeWire runtime, normally
-through `/run/user/1000/pipewire-0`; adjust the UID to match the host user.
-The final runtime setup will be validated later on Pigreco. No definitive
-PipeWire Docker Compose configuration is provided until that runtime test.
+
+The container must have access to the host user's PipeWire runtime. For a host
+user with UID 1000, add:
+
+```yaml
+environment:
+  - XDG_RUNTIME_DIR=/run/user/1000
+
+volumes:
+  - /run/user/1000:/run/user/1000:ro
+```
+
+Replace `1000` with the UID of the host user running PipeWire if different.
+The directory mount is preferred over mounting only `pipewire-0`, because the
+PipeWire socket may be recreated when the daemon restarts.

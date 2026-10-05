@@ -144,7 +144,7 @@ depend() {\n\
   rc-update add pulseaudio boot && \
   sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab && \
   sed -i \
-    -e 's/#rc_env_allow=".*"/rc_env_allow="UID GID"/g' \
+    -e 's/#rc_env_allow=".*"/rc_env_allow="UID GID XDG_RUNTIME_DIR PIPEWIRE_RUNTIME_DIR PULSE_SERVER PULSE_COOKIE"/g' \
     -e 's/#rc_provide=".*"/rc_provide="loopback net"/g' \
     -e 's/#rc_sys=".*"/rc_sys="docker"/g' \
     /etc/rc.conf && \
