@@ -29,6 +29,6 @@ jobs:
           build-args: |
             REPOSITORY_URL=https://github.com/Topolynx/owntone-server.git
             REPOSITORY_BRANCH=pipewire-multisink
-            REPOSITORY_COMMIT=31d69738391736877e432635612092d3255db67d
+            REPOSITORY_COMMIT=f44ac50028b3c23278d0fb3f7a98b09494ffecf2
           cache-from: type=gha,scope=pipewire-dev
           cache-to: type=gha,mode=max,scope=pipewire-dev
