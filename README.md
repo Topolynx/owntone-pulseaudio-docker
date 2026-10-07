@@ -153,3 +153,27 @@ volumes:
 Replace `1000` with the UID of the host user running PipeWire if different.
 The directory mount is preferred over mounting only `pipewire-0`, because the
 PipeWire socket may be recreated when the daemon restarts.
+
+### Opt-in host Avahi mode
+
+Use this mode when the container uses `network_mode: host` and the Docker host
+already runs Avahi. The default `OWNTONE_EXTERNAL_AVAHI=0` preserves the current
+self-contained behavior. Set `OWNTONE_EXTERNAL_AVAHI=1` to prevent OwnTone's
+OpenRC service from starting its local Avahi/D-Bus dependencies and use the
+host Avahi daemon through system D-Bus instead.
+
+Add this Compose fragment alongside the PipeWire runtime settings:
+
+```yaml
+environment:
+  - OWNTONE_EXTERNAL_AVAHI=1
+
+volumes:
+  - /run/dbus:/run/dbus
+  - /run/avahi-daemon:/run/avahi-daemon
+```
+
+The required OwnTone/libavahi communication path is the host system D-Bus
+socket at `/run/dbus/system_bus_socket`. External mode refuses to start OwnTone
+if that path is missing or is not a Unix socket. The `/run/avahi-daemon` mount
+is useful for compatibility/tools; it is not required by the startup guard.

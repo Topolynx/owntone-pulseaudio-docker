@@ -70,6 +70,8 @@ RUN \
 
 FROM alpine:3.22 AS runtime
 
+ENV OWNTONE_EXTERNAL_AVAHI=0
+
 ARG PACKAGE_REPOSITORY_URL
 
 COPY --from=build /tmp/build/ .
@@ -117,8 +119,18 @@ start_stop_daemon_args="--make-pidfile"\n\
 \n\
 depend() {\n\
     need net\n\
-    need avahi-daemon\n\
-    use dbus\n\
+    if [ "${OWNTONE_EXTERNAL_AVAHI:-0}" != "1" ]; then\n\
+        need avahi-daemon\n\
+        use dbus\n\
+    fi\n\
+}\n\
+\n\
+start_pre() {\n\
+    if [ "${OWNTONE_EXTERNAL_AVAHI:-0}" = "1" ] && [ ! -S /run/dbus/system_bus_socket ]; then\n\
+        eerror "External Avahi requires the host system D-Bus socket: bind-mount /run/dbus into the container."\n\
+        return 1\n\
+    fi\n\
+    return 0\n\
 }\n' > /etc/init.d/owntone && \
   chmod 755 /etc/init.d/owntone && \
   rm /etc/avahi/services/* && \
@@ -144,7 +156,7 @@ depend() {\n\
   rc-update add pulseaudio boot && \
   sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab && \
   sed -i \
-    -e 's/#rc_env_allow=".*"/rc_env_allow="UID GID XDG_RUNTIME_DIR PIPEWIRE_RUNTIME_DIR PULSE_SERVER PULSE_COOKIE"/g' \
+    -e 's/#rc_env_allow=".*"/rc_env_allow="UID GID XDG_RUNTIME_DIR PIPEWIRE_RUNTIME_DIR PULSE_SERVER PULSE_COOKIE OWNTONE_EXTERNAL_AVAHI"/g' \
     -e 's/#rc_provide=".*"/rc_provide="loopback net"/g' \
     -e 's/#rc_sys=".*"/rc_sys="docker"/g' \
     /etc/rc.conf && \
