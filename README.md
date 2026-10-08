@@ -1,8 +1,11 @@
-# owntone-pulseaudio-docker
+# OwnTone with native PipeWire for Docker
 
-Custom [OwnTone](https://github.com/Topolynx/owntone-server) Docker image based
-on Alpine 3.22. Native PipeWire is the recommended setup for this fork;
-PulseAudio remains available as a legacy/fallback option.
+This Alpine 3.22 image packages the [Topolynx OwnTone fork](https://github.com/Topolynx/owntone-server)
+for host PipeWire audio and stable, independently selectable speaker outputs.
+Compared with a generic upstream OwnTone container, it includes fork-specific
+PipeWire multisink support and a Docker/OpenRC option to share the host Avahi
+daemon. Native PipeWire is the recommended production path; PulseAudio is
+retained as a legacy/fallback option.
 
 The production image `luciobt/owntone-pulseaudio:latest` includes:
 
@@ -29,8 +32,35 @@ The production workflow runs manually or on pushes to `main`. It publishes:
 - `luciobt/owntone-pulseaudio:latest`
 - `luciobt/owntone-pulseaudio:pipewire-native-307c8db6` for rollback/debugging
 
-It does not poll upstream releases or run nightly. The former dev workflow is
-retained in the `native-pipewire-test` branch/history and is removed from `main`.
+Use `latest` for the current production image. The source-labelled
+`pipewire-native-307c8db6` tag is the rollback/debugging reference for this source
+revision; it is not an immutable image digest and can be rebuilt.
+
+The workflow does not poll upstream releases or run nightly. After a successful
+production build/push, it publishes this README as the Docker Hub repository
+overview. The former dev workflow remains in the development branch/history.
+
+## What the fork and container provide
+
+The companion [OwnTone fork](https://github.com/Topolynx/owntone-server#about-this-fork)
+implements the audio behavior: deterministic output IDs derived from each
+sink's PipeWire `node.name`, registry observation to resolve those stable IDs
+to current runtime object IDs, and fail-closed stream restart and hot-unplug
+handling for targeted sinks. These are fork-specific changes, not guarantees
+of upstream OwnTone.
+
+PipeWire global object IDs can change when a device is removed and rediscovered.
+Home Assistant's OwnTone/forked-daapd integration includes the OwnTone output ID
+in an entity's unique ID. Using a volatile PipeWire object ID can therefore
+create multiple entities for one physical device. A deterministic ID tied to
+`node.name` lets a rediscovered sink retain its OwnTone output identity, as long
+as that sink identity remains unchanged.
+
+This Docker repository supplies the build dependencies and native PipeWire /
+PulseAudio build options, preserves runtime environment variables through
+OpenRC, and implements `OWNTONE_EXTERNAL_AVAHI` with a D-Bus socket startup
+guard. Host-Avahi integration is container-specific; it is not implemented by
+the OwnTone source fork.
 
 ## Native PipeWire setup
 
@@ -44,9 +74,12 @@ audio {
 }
 ```
 
-Multisink publishes each PipeWire Audio/Sink as an independent OwnTone output.
-With multisink disabled, the legacy single output follows WirePlumber routing
-to the default sink. Do not set a PulseAudio `server` socket for native PipeWire.
+Multisink is opt-in and publishes each valid PipeWire `Audio/Sink` as an
+independent OwnTone output. `mixer = "pwstream"` is required so each output
+controls only its own stream volume rather than a shared sink's volume.
+With `pipewire_multisink` omitted or set to `false`, the legacy single-output
+behavior remains: WirePlumber routes that output to the system default sink.
+Do not set a PulseAudio `server` socket for native PipeWire.
 
 The container needs access to the host user's PipeWire runtime. Add these
 Compose settings, replacing `<uid>` with the UID of the host user running

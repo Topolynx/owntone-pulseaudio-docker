@@ -34,3 +34,10 @@ jobs:
             REPOSITORY_COMMIT=307c8db642744f3dc96ee764d3468deb7674ceb7
           cache-from: type=gha,scope=pipewire-prod
           cache-to: type=gha,mode=max,scope=pipewire-prod
+      - name: Update Docker Hub overview
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: luciobt/owntone-pulseaudio
+          readme-filepath: ./README.md
